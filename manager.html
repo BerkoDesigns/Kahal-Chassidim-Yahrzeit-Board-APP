@@ -131,6 +131,7 @@
             <option>Tevet</option><option>Shevat</option><option>Adar</option>
             <option>Adar Sheni</option>
           </select>
+          <input type="number" id="fHebYear" placeholder="Year (e.g. 5786)" min="1" style="margin-top:6px;">
         </div>
       </div>
       <div class="modal-actions">
@@ -142,7 +143,7 @@
 
 <script>
   // ---- CONFIG (set per shul) ----
-  const BOARD_API_URL = 'https://script.google.com/macros/s/AKfycbyn2bOEYISpbK_OdNXMxLIootm5-L6JlommTJwxbrTWvnod_3f5C10-2X5NhreZNS9y/exec'; // Kahal Chassidim
+    const BOARD_API_URL = 'https://script.google.com/macros/s/AKfycbyn2bOEYISpbK_OdNXMxLIootm5-L6JlommTJwxbrTWvnod_3f5C10-2X5NhreZNS9y/exec'; // Kahal Chassidim
   let MANAGER_PIN = null; // fetched from the Settings tab (ManagerPin) on load — single source of truth
 
   // ---- PIN entry ----
@@ -278,6 +279,7 @@
     document.getElementById('fDateGreg').value='';
     document.getElementById('fHebDay').value='';
     document.getElementById('fHebMonth').value='';
+    document.getElementById('fHebYear').value='';
     modalBackdrop.style.display='flex';
   }
 
@@ -289,6 +291,7 @@
     document.getElementById('fHebName').value = p.hebrewName || '';
     document.getElementById('fHebDay').value = p.hebDay || '';
     document.getElementById('fHebMonth').value = p.hebMonth || '';
+    document.getElementById('fHebYear').value = p.hebYear || '';
     modalBackdrop.style.display='flex';
   }
 
@@ -300,7 +303,8 @@
       hebrewName: document.getElementById('fHebName').value,
       deathDateGreg: isHeb ? '' : document.getElementById('fDateGreg').value,
       hebDay: isHeb ? document.getElementById('fHebDay').value : '',
-      hebMonth: isHeb ? document.getElementById('fHebMonth').value : ''
+      hebMonth: isHeb ? document.getElementById('fHebMonth').value : '',
+      hebYear: isHeb ? document.getElementById('fHebYear').value : ''
     };
     const action = editingId ? 'updatePerson' : 'addPerson';
     await fetch(BOARD_API_URL, { method:'POST', body: JSON.stringify({ action, person })});
