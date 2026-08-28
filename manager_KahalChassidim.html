@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Yahrzeit Board — Manager</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#151515; --panel:#1f1f1f; --border:#333;
+    --gold:#c9a24b; --text:#eee; --muted:#999;
+    --danger:#b5493f; --ok:#4a8a5c;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,Segoe UI,Roboto,sans-serif;
+    background:var(--bg); color:var(--text);
+  }
+
+  /* PIN screen */
+  #pinScreen{
+    height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
+  }
+  #pinScreen h1{ font-size:18px; color:var(--gold); letter-spacing:1px; font-weight:600; }
+  #pinDisplay{
+    font-size:28px; letter-spacing:10px; min-height:36px; color:var(--text);
+  }
+  #pinPad{ display:grid; grid-template-columns:repeat(3,64px); gap:10px; }
+  #pinPad button{
+    width:64px; height:64px; border-radius:50%; border:1px solid var(--border);
+    background:var(--panel); color:var(--text); font-size:20px; cursor:pointer;
+  }
+  #pinPad button:active{ background:#2a2a2a; }
+  #pinError{ color:var(--danger); font-size:13px; min-height:16px; }
+
+  /* App */
+  #app{ display:none; max-width:900px; margin:0 auto; padding:24px 16px 60px; }
+  header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+  header h1{ font-size:18px; color:var(--gold); margin:0; }
+  .btn{
+    background:var(--panel); border:1px solid var(--border); color:var(--text);
+    padding:8px 14px; border-radius:6px; cursor:pointer; font-size:14px;
+  }
+  .btn.primary{ background:var(--gold); color:#1a1300; border-color:var(--gold); font-weight:600; }
+  .btn.danger{ background:var(--danger); border-color:var(--danger); color:#fff; }
+  .btn.small{ padding:4px 10px; font-size:12px; }
+
+  table{ width:100%; border-collapse:collapse; margin-top:10px; }
+  th,td{ text-align:left; padding:8px 6px; border-bottom:1px solid var(--border); font-size:14px; }
+  th{ color:var(--muted); font-weight:500; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; }
+  td.date{ color:var(--muted); font-size:13px; }
+
+  .override-pill{
+    display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; cursor:pointer;
+    border:1px solid var(--border);
+  }
+  .override-pill.on{ background:var(--ok); border-color:var(--ok); color:#fff; }
+  .override-pill.off{ background:var(--danger); border-color:var(--danger); color:#fff; }
+  .override-pill.auto{ color:var(--muted); }
+
+  /* Modal */
+  .modal-backdrop{
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6);
+    align-items:center; justify-content:center;
+  }
+  .modal{
+    background:var(--panel); border:1px solid var(--border); border-radius:10px;
+    width:100%; max-width:420px; padding:20px;
+  }
+  .modal h2{ font-size:16px; color:var(--gold); margin-top:0; }
+  .field{ margin-bottom:12px; }
+  .field label{ display:block; font-size:12px; color:var(--muted); margin-bottom:4px; }
+  .field input, .field select{
+    width:100%; padding:8px; background:#111; border:1px solid var(--border); border-radius:6px; color:var(--text);
+  }
+  .date-mode{ display:flex; gap:8px; margin-bottom:8px; }
+  .date-mode label{ font-size:12px; color:var(--muted); display:flex; align-items:center; gap:4px; }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
+</style>
+</head>
+<body>
+
+  <!-- PIN screen -->
+  <div id="pinScreen">
+    <h1>ENTER PIN</h1>
+    <div id="pinDisplay">••••</div>
+    <div id="pinPad"></div>
+    <div id="pinError"></div>
+  </div>
+
+  <!-- Main app -->
+  <div id="app">
+    <header>
+      <h1>Yahrzeit Board — Manager</h1>
+      <button class="btn primary" id="addBtn">+ Add Person</button>
+    </header>
+
+    <table>
+      <thead>
+        <tr><th>Slot</th><th>Name</th><th>Hebrew Name</th><th>Yahrzeit</th><th>Override</th><th></th></tr>
+      </thead>
+      <tbody id="peopleBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Add/Edit modal -->
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal">
+      <h2 id="modalTitle">Add Person</h2>
+      <div class="field">
+        <label>Name (English)</label>
+        <input type="text" id="fName" placeholder="Optional — TBD">
+      </div>
+      <div class="field">
+        <label>Hebrew Name</label>
+        <input type="text" id="fHebName" placeholder="e.g. מרים בת אברהם">
+      </div>
+      <div class="field">
+        <label>Date of death</label>
+        <div class="date-mode">
+          <label><input type="radio" name="dateMode" value="greg" checked> Gregorian</label>
+          <label><input type="radio" name="dateMode" value="heb"> Hebrew date</label>
+        </div>
+        <input type="date" id="fDateGreg">
+        <div id="hebDateFields" style="display:none; gap:8px; margin-top:6px;">
+          <input type="number" id="fHebDay" placeholder="Day (1-30)" min="1" max="30">
+          <select id="fHebMonth">
+            <option value="">Month</option>
+            <option>Nisan</option><option>Iyar</option><option>Sivan</option>
+            <option>Tammuz</option><option>Av</option><option>Elul</option>
+            <option>Tishrei</option><option>Cheshvan</option><option>Kislev</option>
+            <option>Tevet</option><option>Shevat</option><option>Adar</option>
+            <option>Adar Sheni</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" id="cancelBtn">Cancel</button>
+        <button class="btn primary" id="saveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // ---- CONFIG (set per shul) ----
+  const BOARD_API_URL = 'https://script.google.com/macros/s/AKfycbyn2bOEYISpbK_OdNXMxLIootm5-L6JlommTJwxbrTWvnod_3f5C10-2X5NhreZNS9y/exec'; // Kahal Chassidim
+  let MANAGER_PIN = null; // fetched from the Settings tab (ManagerPin) on load — single source of truth
+
+  // ---- PIN entry ----
+  let pinInput = '';
+  const pinDisplay = document.getElementById('pinDisplay');
+  const pinError = document.getElementById('pinError');
+  const pad = document.getElementById('pinPad');
+
+  // Fetch settings (incl. ManagerPin) before the pad becomes usable
+  let settingsCache = {};
+  (async function initSettings(){
+    try{
+      const res = await fetch(BOARD_API_URL);
+      const data = await res.json();
+      if(data.ok === false){
+        pinError.textContent = 'Setup error: ' + data.error;
+        return;
+      }
+      settingsCache = data.settings || {};
+      MANAGER_PIN = String(settingsCache.ManagerPin || '0000');
+    } catch(err){
+      pinError.textContent = 'Could not reach the board — check BOARD_API_URL';
+    }
+  })();
+
+  ['1','2','3','4','5','6','7','8','9','','0','⌫'].forEach(k=>{
+    const b = document.createElement('button');
+    b.textContent = k;
+    if(k==='') b.style.visibility='hidden';
+    b.onclick = ()=>{
+      if(k==='⌫'){ pinInput = pinInput.slice(0,-1); }
+      else if(k!==''){ pinInput += k; }
+      pinDisplay.textContent = '•'.repeat(pinInput.length) || '····';
+      if(pinInput.length === MANAGER_PIN.length){
+        checkPin();
+      }
+    };
+    pad.appendChild(b);
+  });
+  function checkPin(){
+    if(MANAGER_PIN === null){
+      pinError.textContent = 'Still loading — try again in a moment';
+      pinInput=''; pinDisplay.textContent='····';
+      return;
+    }
+    if(pinInput === MANAGER_PIN){
+      document.getElementById('pinScreen').style.display='none';
+      document.getElementById('app').style.display='block';
+      loadPeople();
+    } else {
+      pinError.textContent = 'Incorrect PIN';
+      pinInput=''; pinDisplay.textContent='····';
+      setTimeout(()=> pinError.textContent='', 1500);
+    }
+  }
+
+  // ---- Data loading ----
+  let peopleCache = [];
+  async function loadPeople(){
+    const res = await fetch(BOARD_API_URL);
+    const data = await res.json();
+    peopleCache = data.people;
+    renderTable();
+  }
+
+  function renderTable(){
+    const body = document.getElementById('peopleBody');
+    body.innerHTML = '';
+    peopleCache
+      .slice()
+      .sort((a,b)=>a.slot-b.slot)
+      .forEach(p=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${p.slot}</td>
+          <td>${p.name || '—'}</td>
+          <td>${p.hebrewName || '—'}</td>
+          <td class="date">${p.hebDay} ${p.hebMonth}</td>
+          <td>${overridePill(p)}</td>
+          <td><button class="btn small" data-edit="${p.personId}">Edit</button>
+              <button class="btn small danger" data-del="${p.personId}">Delete</button></td>
+        `;
+        body.appendChild(tr);
+      });
+
+    body.querySelectorAll('[data-edit]').forEach(b=> b.onclick = ()=> openEdit(b.dataset.edit));
+    body.querySelectorAll('[data-del]').forEach(b=> b.onclick = ()=> deletePerson(b.dataset.del));
+    body.querySelectorAll('.override-pill').forEach(p=> p.onclick = ()=> cycleOverride(p.dataset.id, p.dataset.state));
+  }
+
+  function overridePill(p){
+    const state = p.override === 'ON' ? 'on' : p.override === 'OFF' ? 'off' : 'auto';
+    const label = state==='on' ? 'FORCED ON' : state==='off' ? 'FORCED OFF' : 'AUTO';
+    return `<span class="override-pill ${state}" data-id="${p.personId}" data-state="${state}">${label}</span>`;
+  }
+
+  async function cycleOverride(personId, currentState){
+    const next = currentState==='auto' ? 'ON' : currentState==='on' ? 'OFF' : '';
+    await fetch(BOARD_API_URL, { method:'POST', body: JSON.stringify({
+      action:'setOverride', personId, override: next
+    })});
+    loadPeople();
+  }
+
+  async function deletePerson(personId){
+    if(!confirm('Delete this person?')) return;
+    await fetch(BOARD_API_URL, { method:'POST', body: JSON.stringify({
+      action:'deletePerson', personId
+    })});
+    loadPeople();
+  }
+
+  // ---- Add/Edit modal ----
+  const modalBackdrop = document.getElementById('modalBackdrop');
+  let editingId = null;
+
+  document.getElementById('addBtn').onclick = ()=> openModal();
+  document.getElementById('cancelBtn').onclick = ()=> modalBackdrop.style.display='none';
+
+  document.querySelectorAll('input[name=dateMode]').forEach(r=>{
+    r.onchange = ()=>{
+      const isHeb = document.querySelector('input[name=dateMode]:checked').value === 'heb';
+      document.getElementById('fDateGreg').style.display = isHeb ? 'none':'block';
+      document.getElementById('hebDateFields').style.display = isHeb ? 'flex':'none';
+    };
+  });
+
+  function openModal(){
+    editingId = null;
+    document.getElementById('modalTitle').textContent = 'Add Person';
+    document.getElementById('fName').value='';
+    document.getElementById('fHebName').value='';
+    document.getElementById('fDateGreg').value='';
+    document.getElementById('fHebDay').value='';
+    document.getElementById('fHebMonth').value='';
+    modalBackdrop.style.display='flex';
+  }
+
+  function openEdit(personId){
+    const p = peopleCache.find(x=>x.personId===personId);
+    editingId = personId;
+    document.getElementById('modalTitle').textContent = 'Edit Person';
+    document.getElementById('fName').value = p.name || '';
+    document.getElementById('fHebName').value = p.hebrewName || '';
+    document.getElementById('fHebDay').value = p.hebDay || '';
+    document.getElementById('fHebMonth').value = p.hebMonth || '';
+    modalBackdrop.style.display='flex';
+  }
+
+  document.getElementById('saveBtn').onclick = async ()=>{
+    const isHeb = document.querySelector('input[name=dateMode]:checked').value === 'heb';
+    const person = {
+      personId: editingId,
+      name: document.getElementById('fName').value,
+      hebrewName: document.getElementById('fHebName').value,
+      deathDateGreg: isHeb ? '' : document.getElementById('fDateGreg').value,
+      hebDay: isHeb ? document.getElementById('fHebDay').value : '',
+      hebMonth: isHeb ? document.getElementById('fHebMonth').value : ''
+    };
+    const action = editingId ? 'updatePerson' : 'addPerson';
+    await fetch(BOARD_API_URL, { method:'POST', body: JSON.stringify({ action, person })});
+    modalBackdrop.style.display='none';
+    loadPeople();
+  };
+</script>
+</body>
+</html>
