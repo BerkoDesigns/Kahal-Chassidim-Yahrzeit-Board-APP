@@ -115,6 +115,10 @@
         <input type="text" id="fHebName" placeholder="e.g. מרים בת אברהם">
       </div>
       <div class="field">
+        <label>Last Name (family surname)</label>
+        <input type="text" id="fLastName" placeholder="Optional — e.g. כהן">
+      </div>
+      <div class="field">
         <label>Date of death</label>
         <div class="date-mode">
           <label><input type="radio" name="dateMode" value="greg" checked> Gregorian</label>
@@ -276,6 +280,7 @@
     document.getElementById('modalTitle').textContent = 'Add Person';
     document.getElementById('fName').value='';
     document.getElementById('fHebName').value='';
+    document.getElementById('fLastName').value='';
     document.getElementById('fDateGreg').value='';
     document.getElementById('fHebDay').value='';
     document.getElementById('fHebMonth').value='';
@@ -289,6 +294,7 @@
     document.getElementById('modalTitle').textContent = 'Edit Person';
     document.getElementById('fName').value = p.name || '';
     document.getElementById('fHebName').value = p.hebrewName || '';
+    document.getElementById('fLastName').value = p.lastName || '';
     document.getElementById('fHebDay').value = p.hebDay || '';
     document.getElementById('fHebMonth').value = p.hebMonth || '';
     document.getElementById('fHebYear').value = p.hebYear || '';
@@ -301,6 +307,7 @@
       personId: editingId,
       name: document.getElementById('fName').value,
       hebrewName: document.getElementById('fHebName').value,
+      lastName: document.getElementById('fLastName').value,
       deathDateGreg: isHeb ? '' : document.getElementById('fDateGreg').value,
       hebDay: isHeb ? document.getElementById('fHebDay').value : '',
       hebMonth: isHeb ? document.getElementById('fHebMonth').value : '',
