@@ -158,6 +158,9 @@
 
   // Fetch settings (incl. ManagerPin) before the pad becomes usable
   let settingsCache = {};
+  let padReady = false;
+  pinError.textContent = 'Loading…';
+
   (async function initSettings(){
     try{
       const res = await fetch(BOARD_API_URL);
@@ -168,6 +171,8 @@
       }
       settingsCache = data.settings || {};
       MANAGER_PIN = String(settingsCache.ManagerPin || '0000');
+      padReady = true;
+      pinError.textContent = '';
     } catch(err){
       pinError.textContent = 'Could not reach the board — check BOARD_API_URL';
     }
@@ -178,6 +183,14 @@
     b.textContent = k;
     if(k==='') b.style.visibility='hidden';
     b.onclick = ()=>{
+      // Ignore taps entirely until the real PIN has actually finished
+      // loading — instead of accepting input during that window and
+      // failing on an incomplete comparison, which is confusing and
+      // (per your report) required backing out and retrying.
+      if(!padReady){
+        pinError.textContent = 'Still loading — one moment…';
+        return;
+      }
       if(k==='⌫'){ pinInput = pinInput.slice(0,-1); }
       else if(k!==''){ pinInput += k; }
       pinDisplay.textContent = '•'.repeat(pinInput.length) || '····';
